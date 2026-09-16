@@ -55,6 +55,7 @@ vi.mock('./conversation-history.js', () => ({
 vi.mock('../db/settings.js', () => ({
   getSetting: vi.fn(),
   SETTINGS_KEYS: { LLM_DYNAMIC_SYSTEM_PROMPT: 'llm.dynamicSystemPrompt' },
+  isParallelSubagentsEnabled: vi.fn(() => false),
 }))
 
 vi.mock('../context/instructions.js', () => ({

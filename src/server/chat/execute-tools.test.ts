@@ -4,11 +4,20 @@ import type { TurnMetrics } from './stream-pure.js'
 import type { ToolRegistry } from '../tools/types.js'
 import type { TurnEvent } from '../events/types.js'
 import { executeTools, transformSubAgentAliases } from './execute-tools.js'
+import { isParallelSubagentsEnabled } from '../db/settings.js'
 
 vi.mock('../agents/registry.js', () => ({
   loadAllAgentsDefault: vi.fn(),
   findAgentById: vi.fn(),
 }))
+
+vi.mock('../db/settings.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../db/settings.js')>()
+  return {
+    ...actual,
+    isParallelSubagentsEnabled: vi.fn(),
+  }
+})
 
 describe('executeTools', () => {
   const mockToolRegistry = {
@@ -468,5 +477,66 @@ describe('executeTools', () => {
 
     expect(result.returnValueContent).toBe('my result')
     expect(result.returnValueResult).toBe('completed')
+  })
+
+  describe('parallel subagents', () => {
+    function makeSubAgentToolCalls(): ToolCall[] {
+      return [
+        { id: 'c1', name: 'call_sub_agent', arguments: { subAgentType: 'explorer', prompt: 'one' } },
+        { id: 'c2', name: 'call_sub_agent', arguments: { subAgentType: 'explorer', prompt: 'two' } },
+      ]
+    }
+
+    function runSubAgentBatch(delayA: number, delayB: number) {
+      const append = vi.fn()
+      const events: string[] = []
+      const execute = vi.fn().mockImplementation(async (_name: string, args: Record<string, unknown>) => {
+        const id = args['id'] as string
+        const delay = args['delay'] as number
+        events.push(`start:${id}`)
+        await new Promise((resolve) => setTimeout(resolve, delay))
+        events.push(`end:${id}`)
+        return { success: true, output: `out ${id}`, durationMs: delay, truncated: false }
+      })
+      const registry = {
+        tools: [{ name: 'call_sub_agent' }],
+        execute,
+        definitions: [],
+      } as unknown as ToolRegistry
+
+      return {
+        append,
+        events,
+        execute,
+        run: () =>
+          executeTools(
+            'msg-1',
+            makeSubAgentToolCalls().map((tc, i) => ({
+              ...tc,
+              arguments: { ...tc.arguments, id: `s${i}`, delay: i === 0 ? delayA : delayB },
+            })),
+            makeCtx({ toolRegistry: registry }),
+            append,
+          ),
+      }
+    }
+
+    it('runs subagents sequentially without overlap when disabled', async () => {
+      vi.mocked(isParallelSubagentsEnabled).mockReturnValue(false)
+      const { events, run } = runSubAgentBatch(5, 5)
+      const result = await run()
+
+      expect(events).toEqual(['start:s0', 'end:s0', 'start:s1', 'end:s1'])
+      expect(result.toolMessages).toHaveLength(2)
+    })
+
+    it('runs subagents in parallel when enabled', async () => {
+      vi.mocked(isParallelSubagentsEnabled).mockReturnValue(true)
+      const { events, run } = runSubAgentBatch(30, 5)
+      const result = await run()
+
+      expect(events).toEqual(['start:s0', 'start:s1', 'end:s1', 'end:s0'])
+      expect(result.toolMessages).toHaveLength(2)
+    })
   })
 })

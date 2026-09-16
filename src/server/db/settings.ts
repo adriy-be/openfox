@@ -47,6 +47,7 @@ export const SETTINGS_KEYS = {
   TOOLS_SHELL: 'tools.shell',
   CONFIRM_ON_WORKSPACE_ACTIONS: 'tools.confirmOnWorkspaceActions',
   FEATURES_PER_SESSION_MCP: 'features.perSessionMcp',
+  PARALLEL_SUBAGENTS: 'features.parallelSubagents',
   MAINTENANCE_SNAPSHOT_STREAMS_MIGRATED: 'maintenance.snapshotStreamsMigratedV1',
   PROXY_URL: 'network.proxyUrl',
   DEFAULT_AGENT: 'agent.defaultAgent',
@@ -99,6 +100,7 @@ export const SETTINGS_DEFAULTS: Record<string, string> = {
   [SETTINGS_KEYS.TOOLS_SHELL]: 'cmd',
   [SETTINGS_KEYS.CONFIRM_ON_WORKSPACE_ACTIONS]: 'false',
   [SETTINGS_KEYS.FEATURES_PER_SESSION_MCP]: 'false',
+  [SETTINGS_KEYS.PARALLEL_SUBAGENTS]: 'false',
   [SETTINGS_KEYS.MAINTENANCE_SNAPSHOT_STREAMS_MIGRATED]: 'false',
 }
 
@@ -189,4 +191,9 @@ export function getMaxVisibleItems(): number {
 
   const value = Number(setting)
   return Number.isInteger(value) && value >= 0 ? value : defaultValue
+}
+
+export function isParallelSubagentsEnabled(): boolean {
+  const raw = getSetting(SETTINGS_KEYS.PARALLEL_SUBAGENTS) ?? SETTINGS_DEFAULTS[SETTINGS_KEYS.PARALLEL_SUBAGENTS]
+  return raw === 'true'
 }

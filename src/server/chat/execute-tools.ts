@@ -13,6 +13,7 @@ import { createToolProgressHandler } from './tool-streaming.js'
 import { createToolCallEvent, createToolResultEvent, createChatDoneEvent } from './stream-pure.js'
 import { PathAccessDeniedError, AskUserInterrupt } from '../tools/index.js'
 import { loadAllAgentsDefault, findAgentById } from '../agents/registry.js'
+import { isParallelSubagentsEnabled } from '../db/settings.js'
 import { serverT } from '../i18n.js'
 import { logger } from '../utils/logger.js'
 import { sanitizeUtf8 } from '../utils/utf8.js'
@@ -247,11 +248,18 @@ export async function executeTools(
     }
 
     const startTime = Date.now()
+    const runTool = async (): Promise<ToolResult> => {
+      try {
+        return await ctx.toolRegistry.execute(toolCall.name, toolCall.arguments, toolContext)
+      } catch (error) {
+        return handleToolExecutionError(error, ctx.sessionId, startTime)
+      }
+    }
     let toolResult: ToolResult
-    try {
-      toolResult = await ctx.toolRegistry.execute(toolCall.name, toolCall.arguments, toolContext)
-    } catch (error) {
-      toolResult = await handleToolExecutionError(error, ctx.sessionId, startTime)
+    if (toolCall.name === 'call_sub_agent' && !parallelSubagentsEnabled) {
+      toolResult = await withSubAgentLock(runTool)
+    } else {
+      toolResult = await runTool()
     }
 
     ctx.onToolExecuted?.(toolCall, toolResult)
@@ -300,6 +308,21 @@ export async function executeTools(
   }
 
   const batchStart = Date.now()
+  const parallelSubagentsEnabled = isParallelSubagentsEnabled()
+  let subAgentTail: Promise<void> = Promise.resolve()
+  const withSubAgentLock = async <T>(fn: () => Promise<T>): Promise<T> => {
+    const prev = subAgentTail
+    let release: () => void = () => {}
+    subAgentTail = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    await prev
+    try {
+      return await fn()
+    } finally {
+      release()
+    }
+  }
   const executionPromises = toolCalls.map((toolCall, index) => executeTool(toolCall, index))
   const results = await Promise.all(executionPromises)
   ctx.turnMetrics.addToolTime(Date.now() - batchStart)

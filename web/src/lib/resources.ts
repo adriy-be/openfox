@@ -613,6 +613,7 @@ export const SETTINGS_KEYS = {
   TOOLS_SHELL: 'tools.shell',
   CONFIRM_ON_WORKSPACE_ACTIONS: 'tools.confirmOnWorkspaceActions',
   FEATURES_PER_SESSION_MCP: 'features.perSessionMcp',
+  PARALLEL_SUBAGENTS: 'features.parallelSubagents',
   PROXY_URL: 'network.proxyUrl',
   DEFAULT_AGENT: 'agent.defaultAgent',
 } as const

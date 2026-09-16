@@ -23,6 +23,7 @@ export function AdvancedTab({ onClose }: { onClose: () => void }) {
   const cavemanThinking = useSetting(SETTINGS_KEYS.LLM_CAVEMAN_THINKING).value === 'true'
   const cacheWarming = useSetting(SETTINGS_KEYS.CACHE_WARMING).value === 'true'
   const autoContinueOnBoot = useSetting(SETTINGS_KEYS.AUTO_CONTINUE_ON_BOOT).value === 'true'
+  const parallelSubagents = useSetting(SETTINGS_KEYS.PARALLEL_SUBAGENTS).value === 'true'
   const retryPatternsSetting = useSetting(SETTINGS_KEYS.RETRY_PATTERNS).value
   const proxyUrlSetting = useSetting(SETTINGS_KEYS.PROXY_URL).value
   const defaultAgentSetting = useSetting(SETTINGS_KEYS.DEFAULT_AGENT).value
@@ -34,6 +35,7 @@ export function AdvancedTab({ onClose }: { onClose: () => void }) {
     cacheWarming,
     cavemanThinking,
     autoContinueOnBoot,
+    parallelSubagents,
   })
 
   const [retryPatterns, setRetryPatterns] = useState<RetryPatternsValue>({ patterns: [], maxRetriesPerTurn: 10 })
@@ -61,8 +63,9 @@ export function AdvancedTab({ onClose }: { onClose: () => void }) {
       cacheWarming,
       cavemanThinking,
       autoContinueOnBoot,
+      parallelSubagents,
     })
-  }, [showOpenInEditor, dynamicSystemPrompt, cacheWarming, cavemanThinking, autoContinueOnBoot])
+  }, [showOpenInEditor, dynamicSystemPrompt, cacheWarming, cavemanThinking, autoContinueOnBoot, parallelSubagents])
 
   useEffect(() => {
     if (retryPatternsSetting) {
@@ -135,6 +138,12 @@ export function AdvancedTab({ onClose }: { onClose: () => void }) {
     void setSetting(SETTINGS_KEYS.AUTO_CONTINUE_ON_BOOT, String(newValue))
   }
 
+  const handleToggleParallelSubagents = () => {
+    const newValue = !localToggles.parallelSubagents
+    setLocalToggles((prev) => ({ ...prev, parallelSubagents: newValue }))
+    void setSetting(SETTINGS_KEYS.PARALLEL_SUBAGENTS, String(newValue))
+  }
+
   function handleLaunchOnboarding() {
     onClose()
     navigate('/onboarding')
@@ -142,6 +151,16 @@ export function AdvancedTab({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="space-y-6">
+      <SettingsToggle
+        title={t({ en: 'Activate parallel subagents', fr: 'Activer les sous-agents parallèles' })}
+        description={t({
+          en: 'Allow multiple subagents to run concurrently. Uses more compute/GPU resources.',
+          fr: 'Permet à plusieurs sous-agents de s’exécuter simultanément. Utilise plus de ressources de calcul/GPU.',
+        })}
+        enabled={localToggles.parallelSubagents}
+        onToggle={handleToggleParallelSubagents}
+        boldTitle
+      />
       <div>
         <h3 className="text-sm font-medium text-text-primary mb-1">
           {updateStatus === 'available' && (
