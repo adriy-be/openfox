@@ -175,7 +175,13 @@ function validateFieldValue(field: PluginSettingsField, value: unknown, path: st
   } else if (field.type === 'number') {
     if (typeof value !== 'number' || !Number.isFinite(value)) errors.push(`Setting '${path}' must be a number`)
   } else if (field.type === 'select') {
-    if (typeof value !== 'string' || !(field.options ?? []).some((option) => option.value === value)) {
+    // Dynamically populated selects (e.g. optionsFrom: 'providers') can't be
+    // validated against a static option list — entries change at runtime and a
+    // stale value must not block saving.
+    if (
+      typeof value !== 'string' ||
+      (!field.optionsFrom && !(field.options ?? []).some((option) => option.value === value))
+    ) {
       errors.push(`Setting '${path}' must be one of the declared options`)
     }
   } else if (field.type === 'list') {

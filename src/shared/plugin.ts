@@ -362,6 +362,12 @@ export interface PluginSettingsField {
   description?: LocalizedString
   default?: PluginSettingValue
   options?: PluginSettingsOption[]
+  /**
+   * Populate `options` dynamically in the settings UI instead of using the
+   * static `options` list. Currently supported: `'providers'` (the OpenFox
+   * Provider Manager list — non-sensitive id/name pairs).
+   */
+  optionsFrom?: 'providers'
   required?: boolean
   secret?: boolean
   placeholder?: string

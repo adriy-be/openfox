@@ -143,6 +143,46 @@ describe('plugin settings list fields', () => {
   })
 })
 
+describe('select fields with dynamic options', () => {
+  it('accepts any string value when optionsFrom is declared', () => {
+    const dynamic: PluginSettingsSchema = {
+      fields: [
+        {
+          key: 'providerId',
+          type: 'select',
+          label: { en: 'Provider', fr: 'Fournisseur' },
+          optionsFrom: 'providers',
+          options: [],
+        },
+      ],
+    }
+    expect(validatePluginSettings(dynamic, { providerId: 'some-runtime-provider' })).toEqual([])
+    expect(validatePluginSettings(dynamic, { providerId: 42 })).toEqual([
+      "Setting 'providerId' must be one of the declared options",
+    ])
+  })
+
+  it('still validates static select options when optionsFrom is absent', () => {
+    const staticSelect: PluginSettingsSchema = {
+      fields: [
+        {
+          key: 'mode',
+          type: 'select',
+          label: { en: 'Mode', fr: 'Mode' },
+          options: [
+            { value: 'shadow', label: { en: 'Shadow', fr: 'Shadow' } },
+            { value: 'enforce', label: { en: 'Enforce', fr: 'Enforce' } },
+          ],
+        },
+      ],
+    }
+    expect(validatePluginSettings(staticSelect, { mode: 'shadow' })).toEqual([])
+    expect(validatePluginSettings(staticSelect, { mode: 'other' })).toEqual([
+      "Setting 'mode' must be one of the declared options",
+    ])
+  })
+})
+
 const storageSchema: PluginSettingsSchema = {
   fields: [
     { key: 'endpoint', type: 'text', label: { en: 'Endpoint', fr: 'Endpoint' }, default: 'https://api.test' },
