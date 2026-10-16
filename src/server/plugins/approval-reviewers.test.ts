@@ -95,4 +95,29 @@ describe('approval reviewers registry', () => {
     await evaluatePluginApproval(CONTEXT)
     expect(evaluate).toHaveBeenCalledWith(CONTEXT)
   })
+
+  it('a late rejection after timeout does not surface as an unhandled rejection', async () => {
+    const unhandled: unknown[] = []
+    const onUnhandled = (reason: unknown) => unhandled.push(reason)
+    process.on('unhandledRejection', onUnhandled)
+    try {
+      setPluginApprovalReviewers([
+        {
+          pluginId: 'p',
+          reviewer: {
+            id: 'jev',
+            evaluate: () =>
+              new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('late backend failure')), 30)
+              }),
+          },
+        },
+      ])
+      expect(await evaluatePluginApproval(CONTEXT, 5)).toBeUndefined()
+      await new Promise((resolve) => setTimeout(resolve, 80))
+      expect(unhandled).toEqual([])
+    } finally {
+      process.off('unhandledRejection', onUnhandled)
+    }
+  })
 })

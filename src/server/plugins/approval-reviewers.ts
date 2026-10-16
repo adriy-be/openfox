@@ -48,8 +48,12 @@ async function evaluateOne(
   timeoutMs: number,
 ): Promise<PluginApprovalDecision | undefined> {
   try {
+    // Attach a no-op catch first: if the reviewer rejects after the timeout
+    // race has already settled, it must not surface as an unhandled rejection.
+    const evaluation = Promise.resolve().then(() => owned.reviewer.evaluate(context))
+    evaluation.catch(() => {})
     const result = await Promise.race([
-      Promise.resolve(owned.reviewer.evaluate(context)),
+      evaluation,
       new Promise<never>((_, reject) => {
         const timer = setTimeout(() => reject(new Error('approval reviewer timed out')), timeoutMs)
         if (typeof timer.unref === 'function') timer.unref()
