@@ -8,6 +8,7 @@ import { requestPathAccess, PathAccessDeniedError, registerPathConfirmation } fr
 import { AskUserInterrupt } from './ask.js'
 import { createChatPathConfirmationMessage } from '../ws/protocol.js'
 import { getEventStore } from '../events/index.js'
+import { evaluatePluginApproval } from '../plugins/approval-reviewers.js'
 
 /**
  * Counter for generating unique confirmation callIds within a single tool invocation.
@@ -94,6 +95,23 @@ export async function requestUserConfirmation(context: ToolContext, toolLabel: s
   // Already handled by dangerous check above; in normal mode, deny (fail closed).
   if (context.isSubAgent) return Promise.resolve(false)
   if (typeof context.onEvent !== 'function') return Promise.resolve(false)
+  // Plugin approval reviewer: consulted only after every mandatory rule above.
+  // `allow` executes without a dialog (one-time, never persisted anywhere);
+  // `ask` falls through to the native confirmation UI below.
+  const reviewerDecision = await evaluatePluginApproval({
+    kind: 'command',
+    sessionId: context.sessionId,
+    projectId: context.projectId,
+    workdir: context.workdir,
+    tool: toolLabel,
+    toolCallId: context.toolCallId,
+    description: desc,
+    reason: 'dangerous_command',
+    dangerLevel: context.dangerLevel,
+    signal: context.signal,
+  })
+  if (reviewerDecision?.action === 'allow') return Promise.resolve(true)
+  if (reviewerDecision?.action === 'deny') return Promise.resolve(false)
   // Generate a unique callId by appending a sequence counter to the toolCallId.
   // This ensures each confirmation has a unique ID while preserving the association
   // with the parent tool call for frontend matching (via prefix matching).
@@ -241,6 +259,7 @@ export function createTool<TArgs>(name: string, definition: LLMToolDefinition, h
               context.isSubAgent,
               projectId,
               context.nightMode,
+              context.signal,
             )
           }
         },

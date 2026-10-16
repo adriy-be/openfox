@@ -514,6 +514,7 @@ export interface PluginContributionSummary {
   uiOverrides: number
   messageTransforms: number
   dangerLevels: number
+  approvalReviewers: number
   vcsProviders: number
 }
 
@@ -583,5 +584,6 @@ export const EMPTY_PLUGIN_CONTRIBUTIONS: PluginContributionSummary = {
   uiOverrides: 0,
   messageTransforms: 0,
   dangerLevels: 0,
+  approvalReviewers: 0,
   vcsProviders: 0,
 }

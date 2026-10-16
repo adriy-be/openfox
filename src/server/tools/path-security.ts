@@ -6,6 +6,7 @@ import { createChatPathConfirmationMessage } from '../ws/protocol.js'
 import { getEventStore } from '../events/index.js'
 import { getPlatformShell } from '../utils/platform.js'
 import { evaluatePluginPathAccess } from '../plugins/danger-levels.js'
+import { evaluatePluginApproval } from '../plugins/approval-reviewers.js'
 
 // ===========================================================================
 // Constants
@@ -1375,6 +1376,7 @@ export async function requestPathAccess(
   isSubAgent?: boolean,
   projectId?: string,
   nightMode?: boolean,
+  signal?: AbortSignal,
 ): Promise<void> {
   // Night mode: no one is home to confirm. Auto-resolve from the danger level
   // — dangerous approves everything (and lifts the git --no-verify always-ask
@@ -1511,6 +1513,31 @@ export async function requestPathAccess(
     if (decision?.action === 'deny') {
       throw new PathAccessDeniedError(allPathsNeedingConfirmation, tool, reason, decision.message)
     }
+  }
+
+  // Plugin approval reviewer: consulted only after every mandatory rule above
+  // (night mode, sub-agents, git --no-verify, dangerous command patterns,
+  // workdir/sensitive-path checks) has passed. `allow` is ONE-TIME — the paths
+  // are deliberately NOT added to the session allowlist, so the next operation
+  // is reviewed again. `ask` falls through to the native confirmation UI.
+  const reviewerDecision = await evaluatePluginApproval({
+    kind: 'path',
+    sessionId,
+    projectId,
+    workdir,
+    tool,
+    toolCallId: callId,
+    paths: allPathsNeedingConfirmation,
+    command,
+    reason,
+    dangerLevel,
+    signal,
+  })
+  if (reviewerDecision?.action === 'allow') {
+    return
+  }
+  if (reviewerDecision?.action === 'deny') {
+    throw new PathAccessDeniedError(allPathsNeedingConfirmation, tool, reason, reviewerDecision.reason)
   }
 
   // Emit pending event for persistence
