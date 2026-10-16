@@ -77,6 +77,17 @@ export function resolveEndpoint(providerUrl: string, endpointKey: string): strin
   throw new Error(`No verified endpoint mapping for provider origin ${origin}`)
 }
 
+/**
+ * Compose the strict request timeout with an optional cancellation signal.
+ * The caller's abort wins immediately (fail closed); the timeout still
+ * bounds requests that carry no signal.
+ */
+function requestSignal(timeoutMs: number, signal?: AbortSignal): AbortSignal {
+  const timeout = AbortSignal.timeout(timeoutMs)
+  if (!signal) return timeout
+  return typeof AbortSignal.any === 'function' ? AbortSignal.any([timeout, signal]) : signal
+}
+
 async function resolveAuthHeaders(provider: Provider, deps: PluginProviderAccessDeps): Promise<Record<string, string>> {
   if (provider.credentialRef && provider.authAdapter) {
     const adapter = deps.getAuth?.(provider.authAdapter)
@@ -122,7 +133,7 @@ export function createPluginProviderAccess(deps: PluginProviderAccessDeps): Plug
       providerId: string,
       endpointKey: string,
       body: unknown,
-      options?: { timeoutMs?: number },
+      options?: { timeoutMs?: number; signal?: AbortSignal },
     ): Promise<unknown> {
       const provider = findProvider(providerId)
       const url = resolveEndpoint(provider.url, endpointKey)
@@ -140,7 +151,7 @@ export function createPluginProviderAccess(deps: PluginProviderAccessDeps): Plug
         headers: { ...headers, 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
         redirect: 'error',
-        signal: AbortSignal.timeout(timeoutMs),
+        signal: requestSignal(timeoutMs, options?.signal),
       })
 
       if (!response.ok) {

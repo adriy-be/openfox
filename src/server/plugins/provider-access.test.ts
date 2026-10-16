@@ -180,4 +180,15 @@ describe('createPluginProviderAccess', () => {
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
     expect(init.signal).toBeInstanceOf(AbortSignal)
   })
+
+  it('honors a caller cancellation signal', async () => {
+    stubFetch({ body: '{}' })
+    const access = createPluginProviderAccess({ getProviders: () => [makeProvider()] })
+    const controller = new AbortController()
+    controller.abort()
+    await access.requestJson('openrouter-1', 'decisions', {}, { signal: controller.signal })
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect((init.signal as AbortSignal).aborted).toBe(true)
+    expect((init.signal as AbortSignal).reason).toBeInstanceOf(DOMException)
+  })
 })

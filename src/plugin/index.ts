@@ -411,12 +411,13 @@ export interface PluginProviderAccess {
    * @param endpointKey provider-specific endpoint key (e.g. 'decisions', 'systemone')
    * @param body JSON-serializable request body
    * @param options.timeoutMs strict request timeout (default 10000, max 60000)
+   * @param options.signal tool/session cancellation signal — aborts the request
    */
   requestJson(
     providerId: string,
     endpointKey: string,
     body: unknown,
-    options?: { timeoutMs?: number },
+    options?: { timeoutMs?: number; signal?: AbortSignal },
   ): Promise<unknown>
 }
 

@@ -615,7 +615,13 @@ export function PluginSettingsForm({
                                 value: provider.id,
                                 label: { en: provider.name, fr: provider.name },
                               }))
-                            : (field.options ?? [])
+                            : field.optionsFrom === 'models'
+                              ? Array.from(
+                                  new Set(
+                                    providers.flatMap((provider) => (provider.models ?? []).map((model) => model.id)),
+                                  ),
+                                ).map((modelId) => ({ value: modelId, label: { en: modelId, fr: modelId } }))
+                              : (field.options ?? [])
                         // Keep a stale stored value visible instead of silently
                         // falling back to the first option.
                         const current = String(value ?? '')
