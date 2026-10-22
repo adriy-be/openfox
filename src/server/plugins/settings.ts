@@ -134,12 +134,16 @@ export function readPluginSettings(
   schema: PluginSettingsSchema,
   scope: PluginSettingScope = 'global',
   projectId?: string,
+  options?: { onlyStored?: boolean },
 ): PluginSettingsValues {
   const stored = getAllSettings()
   const values: PluginSettingsValues = {}
   for (const field of schema.fields) {
     if (field.type === 'button' || field.type === 'status') continue
     const raw = fieldStorageRow(stored, pluginId, field, scope, projectId)
+    // onlyStored: return only explicitly stored values so a caller can merge
+    // them over another scope without schema defaults clobbering stored values.
+    if (options?.onlyStored && raw === undefined) continue
     const value = coerce(field, raw)
     if (value !== undefined) values[field.key] = value
   }

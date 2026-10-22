@@ -125,11 +125,16 @@ describe('createPluginProviderAccess', () => {
     await expect(access.requestJson('gone', 'decisions', {})).rejects.toThrow(/Provider not found/)
   })
 
-  it('fails for a disabled provider', async () => {
+  it('consults an inactive provider — isActive only marks chat selection, plugin selection is explicit consent', async () => {
+    stubFetch({ body: '{"answers":{}}' })
     const access = createPluginProviderAccess({
       getProviders: () => [makeProvider({ isActive: false })],
     })
-    await expect(access.requestJson('openrouter-1', 'decisions', {})).rejects.toThrow(/disabled/)
+    const result = await access.requestJson('openrouter-1', 'decisions', { model: 'x' })
+    expect(result).toEqual({ answers: {} })
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(url).toBe('https://openrouter.ai/api/alpha/decisions')
+    expect((init.headers as Record<string, string>)['Authorization']).toBe('Bearer sk-or-secret')
   })
 
   it('never sends credentials to an unmapped origin (URL changed)', async () => {

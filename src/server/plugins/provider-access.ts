@@ -115,7 +115,9 @@ export function createPluginProviderAccess(deps: PluginProviderAccessDeps): Plug
   const findProvider = (providerId: string): Provider => {
     const provider = deps.getProviders().find((candidate) => candidate.id === providerId)
     if (!provider) throw new Error('Provider not found')
-    if (!provider.isActive) throw new Error('Provider is disabled')
+    // `isActive` marks the provider currently selected for chat. A plugin that
+    // explicitly selects a provider (its own setting = operator consent) must
+    // be able to use it even when the session chats on a different model.
     return provider
   }
 

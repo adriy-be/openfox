@@ -467,10 +467,10 @@ export class PluginHost {
         get: (key) => readStorageValue(pluginId, key),
         set: (key, value) => setSetting(storageKey(pluginId, key), JSON.stringify(value)),
       },
-      settings: (scope = 'global', projectId) => {
+      settings: (scope = 'global', projectId, options) => {
         const schema = this.registry.getSettingsSchema(pluginId)
         if (!schema) return {}
-        return readPluginSettings(pluginId, schema, scope, projectId)
+        return readPluginSettings(pluginId, schema, scope, projectId, options)
       },
       notify: (request) => {
         this.notifications.emit(pluginId, request)

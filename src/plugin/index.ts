@@ -256,7 +256,11 @@ export interface PluginContext {
   readonly runtime: PluginRuntime
   readonly logger: PluginLogger
   readonly storage: PluginStorage
-  settings(scope?: 'global' | 'project', projectId?: string): Record<string, PluginSettingValue>
+  settings(
+    scope?: 'global' | 'project',
+    projectId?: string,
+    options?: { onlyStored?: boolean },
+  ): Record<string, PluginSettingValue>
   notify(request: PluginNotificationRequest): void
   publish(panelId: string | undefined, key: string, value: unknown): void
   /**
